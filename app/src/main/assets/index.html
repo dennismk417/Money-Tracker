@@ -66,10 +66,21 @@ input,select{width:100%;padding:9px;border:1px solid var(--line);border-radius:9
 <div class="pager" id="tCats"></div><div class="dots" id="dots"></div>
 <label>Account</label><select id="tAcc"></select>
 <label>Date</label><input id="tDate" type="date" required>
-<label>Note</label><input id="tNote" placeholder="optional">
+<label>Note</label><input id="tNote" placeholder="optional, e.g. Netflix">
+<div class="row" style="gap:10px"><div class="sp"><label>Repeat (auto add)</label><select id="tRep"><option value="">Never</option><option value="d">Every day</option><option value="w">Every week</option><option value="m">Every month</option><option value="y">Every year</option></select></div>
+<div class="sp"><label>Reminder</label><select id="tRem"><option value="">None</option><option value="0">On the day</option><option value="1">1 day before</option><option value="3">3 days before</option><option value="7">1 week before</option></select></div></div>
+<div id="tRecNote" class="mute" style="font-size:12px;margin-top:6px"></div>
 <div class="row" style="margin-top:14px"><button type="button" class="btn" id="tDel" style="color:var(--neg)">Delete</button><span class="sp"></span><button type="button" class="btn" onclick="txd.close()">Cancel</button><button class="btn pri">Save</button></div>
 </form></dialog>
 
+<dialog id="ad"><form onsubmit="saveAcc();return false">
+<h3 style="margin:0 0 6px" id="adT">Account</h3>
+<label>Name</label><input id="aName" required>
+<label>Type</label><select id="aType" onchange="aLab()"><option value="asset">Asset – cash, bank, savings, e-wallet</option><option value="liab">Liability – credit card, loan (money you owe)</option></select>
+<label id="aOpenL">Starting balance (RM)</label><input id="aOpen" type="number" step="0.01" value="0" inputmode="decimal">
+<div class="mute" style="font-size:12px;margin-top:6px">After this, the balance updates automatically from your transactions.</div>
+<div class="row" style="margin-top:14px"><span class="sp"></span><button type="button" class="btn" onclick="ad.close()">Cancel</button><button class="btn pri">Save</button></div>
+</form></dialog>
 <dialog id="cd"><form onsubmit="saveCat();return false">
 <h3 style="margin:0 0 6px" id="cdT">Category</h3>
 <label>Type</label><select id="cKind" onchange="sugg()"><option value="exp">Expense</option><option value="inc">Income</option></select>
@@ -158,7 +169,7 @@ function shift(n){mon.setMonth(mon.getMonth()+n);selDay=null;render()}
 function summary(list){let e=0,i=0;list.forEach(t=>t.kind==='inc'?i+=t.amt:e+=t.amt);
  return `<div class="sum card"><span class="neg">▾ ${rm(e)}</span><span class="pos">▴ ${rm(i)}</span><span class="sp"></span><b>= ${i-e<0?'-':''}${rm(i-e)}</b></div>`}
 function txRow(t){const c=cat(t.cat);return `<div class="tx" onclick="openTx('${t.id}')"><div class="ic" style="background:${c.col}22">${ico(c.icon,c.col)}</div>
-<div class="sp"><div>${esc(t.note||c.name)}</div><span class="tag">${esc(t.acc)}</span>${t.note?` <span class="tag">${esc(c.name)}</span>`:''}</div>
+<div class="sp"><div>${esc(t.note||c.name)}</div><span class="tag">${esc(t.acc)}</span>${t.rec?' <span class="tag">🔁 auto</span>':''}${t.date>today?' <span class="tag">upcoming</span>':''}${t.note?` <span class="tag">${esc(c.name)}</span>`:''}</div>
 <div class="amt ${sg(val(t))}">${t.kind==='inc'?'▴':'▾'} ${rm(t.amt)}</div></div>`}
 function groups(list,keyFn,labelFn){const m={};list.forEach(t=>(m[keyFn(t)]??=[]).push(t));
  return Object.entries(m).map(([k,ts])=>({k,label:labelFn(k,ts),ts,tot:ts.reduce((a,t)=>a+val(t),0)}))}
@@ -168,7 +179,7 @@ function renderTx(){
  if(grp==='date')gs=groups(list,t=>t.date,k=>{const d=new Date(k+'T00:00');return (k===today?'Today, ':'')+d.toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'})});
  else if(grp==='cat')gs=groups(list,t=>t.cat,k=>{const c=cat(k);return `<span style="display:inline-flex;vertical-align:middle">${ico(c.icon,c.col)}</span> ${esc(c.name)}`}).sort((a,b)=>a.tot-b.tot);
  else gs=groups(list,t=>t.acc,k=>k).sort((a,b)=>a.tot-b.tot);
- return `<h1>Transactions</h1>${mnav()}${summary(list)}
+ return `<h1>Transactions</h1>${remBanner()}${mnav()}${summary(list)}
  <div class="seg"><button class="${grp==='date'?'on':''}" onclick="grp='date';render()">By day</button><button class="${grp==='cat'?'on':''}" onclick="grp='cat';render()">By category</button><button class="${grp==='acc'?'on':''}" onclick="grp='acc';render()">By account</button></div>
  ${gs.length?gs.map(g=>`<div class="gh"><span>${grp==='cat'?g.label:esc(g.label)}${grp!=='date'?` · ${g.ts.length}`:''}</span><span class="${sg(g.tot)}">${g.tot<0?'-':''}${rm(g.tot)}</span></div>${g.ts.map(txRow).join('')}`).join(''):'<div class="empty">No transactions this month.<br>Tap + to add one.</div>'}`}
 function renderCal(){
@@ -178,7 +189,7 @@ function renderCal(){
  for(let d=1;d<=days;d++){const k=ym()+'-'+String(d).padStart(2,'0'),v=net[k];
   cells+=`<div class="d ${k===today?'today':''} ${k===selDay?'sel':''}" onclick="selDay='${k}';render()"><div class="n">${d}</div><div class="v ${v==null?'mute':sg(v)}">${v==null?'–':(v<0?'-':'+')+(Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(1)+'k':Math.round(Math.abs(v)))}</div></div>`}
  const dl=selDay?list.filter(t=>t.date===selDay):[];
- return `<h1>Calendar</h1>${mnav()}${summary(list)}<div class="cal">${cells}</div>
+ return `<h1>Calendar</h1>${worthHeader()}${remBanner()}${mnav()}${summary(list)}<div class="cal">${cells}</div>
  ${selDay?`<div class="gh"><span>${new Date(selDay+'T00:00').toDateString()}</span><span><button class="btn" onclick="openTx(null,'${selDay}')">+ Add</button></span></div>${dl.map(txRow).join('')||'<div class="empty">Nothing on this day</div>'}`:'<p class="mute" style="text-align:center">Tap a day to see its transactions</p>'}${charts()}`}
 // ---- charts
 const hidden=()=>new Set(S.hide||[]);
@@ -222,8 +233,9 @@ function renderCats(){
  const sec=k=>S.cats.filter(c=>c.kind===k).map(c=>`<div class="tx" onclick="openCat('${c.id}')"><div class="ic" style="background:${c.col}22">${ico(c.icon,c.col)}</div><div class="sp">${esc(c.name)}</div><span class="mute">Edit ›</span></div>`).join('');
  return `<h1>Categories</h1><div class="gh"><span>Expense</span></div>${sec('exp')}<div class="gh"><span>Income</span></div>${sec('inc')}
  <div class="row" style="margin-top:12px"><button class="btn pri" onclick="openCat()">+ New category</button></div>
- <h1 style="font-size:20px;margin-top:28px">Accounts</h1><p class="mute" style="margin:0">Tap ☆ to make an account your default for new transactions.</p>${S.accs.map((a,i)=>`<div class="tx"><div class="sp">${esc(a)}${a===(S.accs.includes(S.defAcc)?S.defAcc:S.accs[0])?' <span class="tag">Default</span>':''}</div><button class="btn" title="Set as default" onclick="S.defAcc=S.accs[${i}];save();render()">${a===(S.accs.includes(S.defAcc)?S.defAcc:S.accs[0])?'★':'☆'}</button><button class="btn" onclick="renAcc(${i})">Rename</button><button class="btn" onclick="delAcc(${i})">✕</button></div>`).join('')}
- <div class="row" style="margin-top:12px"><button class="btn" onclick="addAcc()">+ New account</button></div>
+ <h1 style="font-size:20px;margin-top:28px">Accounts</h1><p class="mute" style="margin:0">Tap ☆ to set your default account. Tap Edit to set the type (asset or liability) and starting balance.</p>${S.accs.map((a,i)=>{const d=a===(S.accs.includes(S.defAcc)?S.defAcc:S.accs[0]),b=accBal(a),L=ainfo(a).type==='liab';return `<div class="tx" style="cursor:default"><div class="sp">${esc(a)}${d?' <span class="tag">Default</span>':''}<div class="mute" style="font-size:12px">${L?'Liability · owed ':'Asset · balance '}<b class="${L||b<0?'neg':'pos'}">${b<0?'-':''}${rm(b)}</b></div></div><button class="btn" title="Set as default" onclick="S.defAcc=S.accs[${i}];save();render()">${d?'★':'☆'}</button><button class="btn" onclick="openAcc(${i})">Edit</button><button class="btn" onclick="delAcc(${i})">✕</button></div>`}).join('')}
+ <div class="row" style="margin-top:12px"><button class="btn" onclick="openAcc()">+ New account</button></div>
+ <h1 style="font-size:20px;margin-top:28px">Repeating &amp; reminders</h1>${(S.rec||[]).length?S.rec.map(r=>{const c=cat(r.cat);return `<div class="tx" style="cursor:default"><div class="ic" style="background:${c.col}22">${ico(c.icon,c.col)}</div><div class="sp"><div>${esc(r.note||c.name)}</div><span class="mute" style="font-size:12px">${rm(r.amt)} every ${FQ[r.freq]} · next ${occ(r,r.n)}${r.remind!==''&&r.remind!=null?' · 🔔':''}</span></div><button class="btn sm" onclick="stopRec('${r.id}')">Stop</button></div>`}).join(''):'<p class="mute">None yet. When adding a transaction, choose "Repeat" for things like subscriptions, rent or salary.</p>'}
  <h1 style="font-size:20px;margin-top:28px">Backup</h1><p class="mute">Data is saved in this browser. Export a backup now and then.</p>
  <div class="row"><button class="btn" onclick="exp()">Export</button><button class="btn" onclick="imp()">Import</button></div>`}
 function render(){$('app').innerHTML=[renderTx,renderCal,renderCats][tab]();[0,1,2].forEach(i=>$('nb'+i).classList.toggle('on',i===tab))}
@@ -256,12 +268,64 @@ document.addEventListener('close',e=>{if(e.target.id==='txd'){arranging=false;mo
 function openTx(id,date){editId=id||null;const t=id?S.tx.find(x=>x.id===id):null;
  $('tAcc').innerHTML=S.accs.map(a=>`<option>${esc(a)}</option>`).join('');
  $('tAmt').value=t?t.amt:'';$('tDate').value=t?t.date:(date||(tab===1&&selDay)||today);$('tNote').value=t?t.note:'';
+ const rr=t&&t.rec&&(S.rec||[]).find(r=>r.id===t.rec);
+ $('tRep').value=rr?rr.freq:'';$('tRem').value=rr?(rr.remind??''):(t?(t.remind??''):'');$('tRep').disabled=!!rr;
+ $('tRecNote').textContent=rr?'This came from a repeating item. Changes here apply to this one only; stop the repeat under Settings → Repeating & reminders.':(t&&t.rec?'Its repeating rule was stopped.':'');
  $('tAcc').value=t?t.acc:(S.accs.includes(S.defAcc)?S.defAcc:S.accs[0]);tCat=t?t.cat:null;kind=null;setKind(t?t.kind:'exp');
  $('tDel').style.visibility=t?'visible':'hidden';$('tDel').onclick=()=>{S.tx=S.tx.filter(x=>x.id!==id);save();txd.close();render()};
  txd.showModal();setTimeout(()=>$('tAmt').focus(),50)}
 function saveTx(){const amt=parseFloat($('tAmt').value);if(!(amt>0)||!tCat)return;
+ const old=editId&&S.tx.find(x=>x.id===editId),rem=$('tRem').value,rep_=$('tRep').value;
  const o={id:editId||Date.now().toString(36),amt,kind,cat:tCat,acc:$('tAcc').value,date:$('tDate').value,note:$('tNote').value.trim()};
- S.tx=S.tx.filter(x=>x.id!==editId);S.tx.push(o);save();txd.close();const d=new Date(o.date+'T00:00');mon=new Date(d.getFullYear(),d.getMonth(),1);render()}
+ if(old&&old.rec)o.rec=old.rec;
+ if(rem!=='')o.remind=rem;
+ S.tx=S.tx.filter(x=>x.id!==editId);
+ if(rep_&&!o.rec){S.rec=S.rec||[];const id='r'+Date.now().toString(36);S.rec.push({id,amt,kind,cat:tCat,acc:o.acc,note:o.note,start:o.date,freq:rep_,n:0,remind:rem});runRec(true)}
+ else{if(o.rec){const r=(S.rec||[]).find(r=>r.id===o.rec);if(r){r.remind=rem;delete o.remind}}S.tx.push(o)}save();txd.close();const d=new Date(o.date+'T00:00');mon=new Date(d.getFullYear(),d.getMonth(),1);render()}
+// ---- repeating items
+const FQ={d:'day',w:'week',m:'month',y:'year'};
+function occ(r,i){const d=new Date(r.start+'T00:00');
+ if(r.freq==='d')d.setDate(d.getDate()+i);else if(r.freq==='w')d.setDate(d.getDate()+7*i);
+ else{const day=d.getDate(),m=d.getMonth()+(r.freq==='m'?i:12*i),y=d.getFullYear();const last=new Date(y,m+1,0).getDate();return iso(new Date(y,m,Math.min(day,last)))}
+ return iso(d)}
+function runRec(quiet){let added=0;const td=iso(new Date());
+ (S.rec||[]).forEach(r=>{let g=0;while(occ(r,r.n)<=td&&g++<1000){S.tx.push({id:r.id+'_'+r.n,amt:r.amt,kind:r.kind,cat:r.cat,acc:r.acc,note:r.note,date:occ(r,r.n),rec:r.id});r.n++;added++}});
+ if(added){save();if(!quiet)render()}return added}
+function stopRec(id){if(!confirm('Stop this repeating item? Entries already added stay.'))return;S.rec=S.rec.filter(r=>r.id!==id);save();render()}
+// ---- reminders
+const addDays=(k,n)=>{const d=new Date(k+'T00:00');d.setDate(d.getDate()+n);return iso(d)};
+function dueRems(){const td=iso(new Date()),out=[],dis=new Set(S.dis||[]);
+ (S.rec||[]).forEach(r=>{if(r.remind===''||r.remind==null)return;const due=occ(r,r.n),key=r.id+'@'+due;
+  if(addDays(due,-(+r.remind))<=td&&!dis.has(key))out.push({key,due,name:r.note||cat(r.cat).name,amt:r.amt,kind:r.kind,c:cat(r.cat)})});
+ S.tx.forEach(t=>{if(t.remind==null||t.remind==='')return;const key=t.id+'@'+t.date;
+  if(addDays(t.date,-(+t.remind))<=td&&t.date>=td&&!dis.has(key))out.push({key,due:t.date,name:t.note||cat(t.cat).name,amt:t.amt,kind:t.kind,c:cat(t.cat)})});
+ return out.sort((a,b)=>a.due.localeCompare(b.due))}
+function dismiss(k){S.dis=[...(S.dis||[]),k].slice(-300);save();render()}
+function remBanner(){const rs=dueRems(),td=iso(new Date());if(!rs.length)return '';
+ return `<div class="card" style="border-color:var(--acc);margin-bottom:10px"><b>🔔 Reminders</b>${rs.map(x=>`<div class="tx" style="cursor:default"><div class="ic" style="background:${x.c.col}22">${ico(x.c.icon,x.c.col)}</div><div class="sp"><div>${esc(x.name)}</div><span class="mute" style="font-size:12px">${x.due===td?'Due today':'Due '+new Date(x.due+'T00:00').toLocaleDateString('en',{weekday:'short',day:'numeric',month:'short'})}</span></div><div class="amt ${x.kind==='inc'?'pos':'neg'}">${rm(x.amt)}</div><button class="btn sm" onclick="dismiss('${x.key}')">OK</button></div>`).join('')}
+ ${'Notification' in window&&Notification.permission==='default'?'<button class="btn sm" style="margin-top:8px" onclick="Notification.requestPermission().then(render)">Also notify me on this device</button>':''}</div>`}
+function notify(){if(!('Notification' in window)||Notification.permission!=='granted')return;const sent=new Set(S.sent||[]);let ch=0;
+ dueRems().forEach(x=>{if(sent.has(x.key))return;try{new Notification('Money Tracker reminder',{body:`${x.name} – ${rm(x.amt)} due ${x.due}`})}catch(e){}sent.add(x.key);ch=1});
+ if(ch){S.sent=[...sent].slice(-300);save()}}
+// ---- accounts, assets & liabilities
+const ainfo=a=>{S.accInfo=S.accInfo||{};return S.accInfo[a]||(S.accInfo[a]={type:/card|loan|credit|ptptn|mortgage/i.test(a)?'liab':'asset',open:0})};
+function accBal(a){const i=ainfo(a),td=iso(new Date());let b=+i.open||0;
+ S.tx.forEach(t=>{if(t.acc!==a||t.date>td)return;const v=t.kind==='inc'?t.amt:-t.amt;b+=i.type==='liab'?-v:v});return b}
+function worth(){let as=0,li=0;S.accs.forEach(a=>{const b=accBal(a);ainfo(a).type==='liab'?li+=b:as+=b});return{as,li}}
+function worthHeader(){const w=worth(),n=w.as-w.li;
+ return `<div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);text-align:center;gap:4px;margin-bottom:8px">
+ <div><div class="mute" style="font-size:12px">Assets</div><b class="${w.as<0?'neg':'pos'}">${w.as<0?'-':''}${rm(w.as)}</b></div>
+ <div><div class="mute" style="font-size:12px">Liabilities</div><b class="neg">${w.li<0?'-':''}${rm(w.li)}</b></div>
+ <div><div class="mute" style="font-size:12px">Net worth</div><b>${n<0?'-':''}${rm(n)}</b></div></div>`}
+let editAcc=null;
+function aLab(){$('aOpenL').textContent=$('aType').value==='liab'?'Amount owed at start (RM)':'Starting balance (RM)'}
+function openAcc(i){editAcc=i==null?null:S.accs[i];const inf=editAcc?ainfo(editAcc):{type:'asset',open:0};
+ $('adT').textContent=editAcc?'Edit account':'New account';$('aName').value=editAcc||'';$('aType').value=inf.type;$('aOpen').value=inf.open||0;aLab();ad.showModal()}
+function saveAcc(){const n=$('aName').value.trim();if(!n)return;if(n!==editAcc&&S.accs.includes(n))return alert('That name is already used');
+ const inf={type:$('aType').value,open:parseFloat($('aOpen').value)||0};
+ if(editAcc){const i=S.accs.indexOf(editAcc);S.accs[i]=n;if(n!==editAcc){S.tx.forEach(t=>{if(t.acc===editAcc)t.acc=n});(S.rec||[]).forEach(r=>{if(r.acc===editAcc)r.acc=n});if(S.defAcc===editAcc)S.defAcc=n;delete S.accInfo[editAcc]}}
+ else S.accs.push(n);
+ S.accInfo[n]=inf;save();ad.close();render()}
 // category dialog
 const findPre=n=>[...PRE.exp,...PRE.inc].find(p=>p.name.toLowerCase()===n.trim().toLowerCase());
 function setIcon(v){$('cIcon').value=v;$('cPrev').innerHTML=ico(v,$('cCol').value);
@@ -286,5 +350,7 @@ function renAcc(i){const o=S.accs[i],n=prompt('Rename account',o);if(n&&n.trim()
 function delAcc(i){if(S.accs.length<2)return alert('Keep at least one account');if(confirm('Remove "'+S.accs[i]+'"? Existing transactions keep their label.')){S.accs.splice(i,1);save();render()}}
 function exp(){prompt('Copy this backup text and keep it somewhere safe:',JSON.stringify(S))}
 function imp(){const s=prompt('Paste your backup text:');if(!s)return;try{const d=JSON.parse(s);if(d.cats&&d.tx){S=d;save();render()}else throw 0}catch(e){alert('Invalid backup')}}
-render();
+runRec(true);S.accs.forEach(ainfo);save();render();notify();
+setInterval(()=>{runRec();notify();if(!document.querySelector('dialog[open]'))render()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){runRec();notify();render()}});
 </script></body></html>
