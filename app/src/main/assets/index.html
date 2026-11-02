@@ -39,7 +39,7 @@ h2{font-size:20px;letter-spacing:-.3px}
 .seg.big button{padding:11px;font-size:15px}
 /* buttons, chips, fields */
 .btn{border:0;background:var(--card2);color:var(--fg);border-radius:12px;padding:10px 14px;font-weight:500;transition:transform .12s}
-.btn:active,.chip:active,.k:active,.tile:active,.mtile:active{transform:scale(.95)}
+.k:active{background:var(--acc2)}
 .btn.pri{background:var(--acc);color:var(--onacc)}.btn.wide{width:100%;padding:16px;font-size:16.5px;border-radius:16px;font-weight:600}
 .btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}.btn.danger{color:var(--neg)}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0}.chips::-webkit-scrollbar{display:none}
@@ -59,11 +59,11 @@ nav .pi::before{content:'';position:absolute;inset:0;border-radius:16px;backgrou
 nav .pi svg{position:relative}
 nav button{transition:color .25s}nav button.on{color:var(--fg);font-weight:600}nav button.on .pi::before{transform:none;opacity:1}
 .fab{position:fixed;right:max(18px,calc(50% - 282px));bottom:calc(92px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:20px;background:var(--acc2);color:var(--fg);border:0;box-shadow:var(--shadow);display:grid;place-items:center;z-index:9;transition:transform .15s}
-.fab:active{transform:scale(.9)}
+
 .fab.hide{transform:scale(.4);opacity:0;pointer-events:none}
 .fab{transition:transform .3s cubic-bezier(.2,0,0,1),opacity .2s}
 /* pages */
-.page{position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:20;will-change:clip-path,transform}
+.page{position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:20;}
 .scrim{position:fixed;inset:0;background:#000;z-index:19;opacity:0;pointer-events:none}
 .phead{position:sticky;top:0;z-index:3;background:var(--bg);margin:0 -16px;padding:0 16px;transition:box-shadow .2s}
 .dhead .phead{position:static;background:none;margin:0;padding:0;box-shadow:none}
@@ -128,7 +128,7 @@ nav button{transition:color .25s}nav button.on{color:var(--fg);font-weight:600}n
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
 .cal .h{font-size:12px;color:var(--mute);padding:4px 0}
 .d{border:1.5px solid var(--line);border-radius:12px;padding:5px 0;min-height:54px;cursor:pointer;background:var(--card);transition:transform .12s}
-.d:active{transform:scale(.93)}.d .n{font-weight:600}.d .v{font-size:10px}
+.d .n{font-weight:600}.d .v{font-size:10px}
 .d.today{border-color:var(--acc)}.d.sel{background:var(--acc2)}
 /* more */
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -270,25 +270,15 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest('button,.tx
  lastTap=t?{rect:t.getBoundingClientRect(),time:Date.now()}:null;
  if(!t||RMO||t.closest('nav'))return;const r=t.getBoundingClientRect(),sz=Math.max(r.width,r.height)*2.2,sp=document.createElement('span');sp.className='rip';
  sp.style.cssText=`width:${sz}px;height:${sz}px;left:${e.clientX-r.left-sz/2}px;top:${e.clientY-r.top-sz/2}px`;t.appendChild(sp);
- sp.animate([{transform:'scale(0)',opacity:.22},{transform:'scale(1)',opacity:0}],{duration:600,easing:EASE}).onfinish=()=>sp.remove()},true);
+ sp.animate([{transform:'scale(0)',opacity:.12},{transform:'scale(1)',opacity:0}],{duration:450,easing:EASE}).onfinish=()=>sp.remove()},true);
 function countUp(root){if(RMO)return;[...root.querySelectorAll('.amt,.worth b,.damt div')].slice(0,40).forEach(el=>{
  const m=el.textContent.match(/^(.*?RM)([\d,]+\.\d{2})(.*)$/s);if(!m)return;const v=parseFloat(m[2].replace(/,/g,''));if(!v)return;
  const t0=performance.now(),D=650,fmt=x=>x.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
  const step=n=>{const k=Math.min(1,(n-t0)/D),e=1-Math.pow(1-k,3);el.textContent=m[1]+fmt(v*e)+m[3];if(k<1&&el.isConnected)requestAnimationFrame(step)};requestAnimationFrame(step)})}
-function pageIn(e){const el=e.el;if(RMO)return;const r=lastTap&&Date.now()-lastTap.time<900?lastTap.rect:null;e.src=r;
- const sc=document.createElement('div');sc.className='scrim';$('pages').insertBefore(sc,el);e.scrim=sc;sc.animate([{opacity:0},{opacity:.32}],{duration:400,easing:EASE,fill:'forwards'});
- if(r&&r.width>30){const W=innerWidth,H=innerHeight,rad=getComputedStyle(document.documentElement).getPropertyValue('--r')||'18px';
-  el.animate([{clipPath:`inset(${r.top}px ${W-r.right}px ${H-r.bottom}px ${r.left}px round 18px)`},{clipPath:'inset(0px 0px 0px 0px round 0px)'}],{duration:450,easing:EASE});
-  el.firstElementChild.animate([{opacity:0,transform:'scale(.92)'},{opacity:0,offset:.15},{opacity:1,transform:'none'}],{duration:450,easing:EASE})}
- else el.animate([{opacity:0,transform:'translateX(18%)'},{opacity:1,transform:'none'}],{duration:380,easing:EASE})}
-function pageOut(e,done){const el=e.el;if(RMO){el.remove();e.scrim&&e.scrim.remove();return done&&done()}
- e.scrim&&e.scrim.animate([{opacity:.32},{opacity:0}],{duration:300,easing:EASE,fill:'forwards'});
- const r=e.src;let a;
- if(r&&r.width>30&&r.bottom>0&&r.top<innerHeight){const W=innerWidth,H=innerHeight;
-  el.firstElementChild.animate([{opacity:1},{opacity:0,offset:.5},{opacity:0}],{duration:340,easing:EASE,fill:'forwards'});
-  a=el.animate([{clipPath:'inset(0px 0px 0px 0px round 0px)'},{clipPath:`inset(${r.top}px ${W-r.right}px ${H-r.bottom}px ${r.left}px round 18px)`,opacity:.4}],{duration:340,easing:EASE,fill:'forwards'})}
- else a=el.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateX(18%)'}],{duration:260,easing:EASE,fill:'forwards'});
- a.onfinish=()=>{el.remove();e.scrim&&e.scrim.remove();done&&done()}}
+// Screens open/close with a simple, short fade (opacity only, so nothing inside shifts or jumps).
+function pageIn(e){if(RMO)return;e.el.animate([{opacity:0},{opacity:1}],{duration:200,easing:EASE})}
+function pageOut(e,done){const el=e.el;el.style.pointerEvents='none';if(RMO){el.remove();return done&&done()}
+ el.animate([{opacity:1},{opacity:0}],{duration:160,easing:'linear',fill:'forwards'}).onfinish=()=>{el.remove();done&&done()}}
 function stickyHead(el){const h=el.querySelector('.phead'),t=el.querySelector('.ptitle');if(!h)return;
  if(t&&!h.querySelector('.htitle')){const s=document.createElement('div');s.className='htitle';s.textContent=t.textContent;h.appendChild(s)}
  const on=()=>{h.classList.toggle('stuck',el.scrollTop>(t?t.offsetTop+t.offsetHeight-60:8))};el.onscroll=on;on()}
@@ -302,7 +292,7 @@ function go(t){if(t===tab){window.scrollTo({top:0,behavior:'smooth'});return}tab
  const m=$('main');if(RMO){renderMain();scrollTo(0,0);return}
  m.getAnimations().forEach(a=>a.cancel());
  m.animate([{opacity:1},{opacity:0}],{duration:90,easing:'linear',fill:'forwards'}).onfinish=()=>{scrollTo(0,0);$('topbar').classList.remove('on');renderMain();m.getAnimations().forEach(a=>a.cancel());
-  m.animate([{opacity:0,transform:'scale(.965)'},{opacity:1,transform:'none'}],{duration:300,easing:EASE});countUp(m)}}
+  m.animate([{opacity:0},{opacity:1}],{duration:220,easing:EASE});countUp(m)}}
 function push(name,data={}){const el=document.createElement('div');el.className='page';$('pages').appendChild(el);const e={name,data,el};stack.push(e);paint(e);pageIn(e);if(name==='accs'||name==='details')countUp(el)}
 function paint(e){const st=e.el.scrollTop;e.el.innerHTML=`<div class="pwrap">${PAGES[e.name](e.data)}</div>`;e.el.scrollTop=st;stickyHead(e.el);AFTER[e.name]&&AFTER[e.name](e.data,e.el)}
 function refreshTop(){const e=stack.at(-1);if(e)paint(e)}
