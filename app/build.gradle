@@ -6,8 +6,22 @@ android {
         applicationId 'com.moneytracker.app'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '2.0'
+    }
+    // Fixed key for installing on your own phone, so every new build updates
+    // the existing app (keeping your data) instead of needing an uninstall.
+    // For the Play Store, create a separate private release key later.
+    signingConfigs {
+        sideload {
+            storeFile file('mt-sideload.keystore')
+            storePassword 'moneytracker'
+            keyAlias 'mt'
+            keyPassword 'moneytracker'
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.sideload }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
