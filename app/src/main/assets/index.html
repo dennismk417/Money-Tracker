@@ -54,13 +54,28 @@ select.sel{border:0;background:var(--card2);border-radius:10px;padding:7px 10px;
 /* nav + fab */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);display:flex;justify-content:center;padding:8px 0 calc(10px + env(safe-area-inset-bottom));z-index:10;box-shadow:0 -1px 0 var(--line)}
 nav button{flex:1;max-width:150px;border:0;background:none;color:var(--mute);font-size:12.5px;display:flex;flex-direction:column;align-items:center;gap:4px}
-nav .pi{width:60px;height:32px;border-radius:16px;display:grid;place-items:center;transition:background .25s}
-nav button.on{color:var(--fg);font-weight:600}nav button.on .pi{background:var(--acc2)}
+nav .pi{position:relative;width:62px;height:32px;border-radius:16px;display:grid;place-items:center}
+nav .pi::before{content:'';position:absolute;inset:0;border-radius:16px;background:var(--acc2);transform:scaleX(.3);opacity:0;transition:transform .4s cubic-bezier(.2,0,0,1),opacity .2s}
+nav .pi svg{position:relative}
+nav button{transition:color .25s}nav button.on{color:var(--fg);font-weight:600}nav button.on .pi::before{transform:none;opacity:1}
 .fab{position:fixed;right:max(18px,calc(50% - 282px));bottom:calc(92px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:20px;background:var(--acc2);color:var(--fg);border:0;box-shadow:var(--shadow);display:grid;place-items:center;z-index:9;transition:transform .15s}
 .fab:active{transform:scale(.9)}
+.fab.hide{transform:scale(.4);opacity:0;pointer-events:none}
+.fab{transition:transform .3s cubic-bezier(.2,0,0,1),opacity .2s}
 /* pages */
-.page{position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:20;animation:pin .32s cubic-bezier(.2,.8,.2,1)}
-.page.leave{animation:pout .22s ease-in forwards}
+.page{position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:20;will-change:clip-path,transform}
+.scrim{position:fixed;inset:0;background:#000;z-index:19;opacity:0;pointer-events:none}
+.phead{position:sticky;top:0;z-index:3;background:var(--bg);margin:0 -16px;padding:0 16px;transition:box-shadow .2s}
+.dhead .phead{position:static;background:none;margin:0;padding:0;box-shadow:none}
+.phead.stuck{box-shadow:0 1px 0 var(--line)}
+.htitle{position:absolute;left:68px;right:68px;text-align:center;font-weight:600;font-size:18px;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .25s cubic-bezier(.2,0,0,1);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stuck .htitle{opacity:1;transform:none}
+#topbar{position:fixed;top:0;left:0;right:0;height:54px;z-index:8;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;opacity:0;transform:translateY(-8px);transition:opacity .2s,transform .25s cubic-bezier(.2,0,0,1);pointer-events:none;box-shadow:0 1px 0 var(--line)}
+#topbar.on{opacity:1;transform:none}
+.ptitle{transform-origin:left center;transition:opacity .2s}
+.rip{position:absolute;border-radius:50%;background:currentColor;pointer-events:none;opacity:0}
+.tx,.chip,.mtile,.acard,.tile,.k,.btn,.d,.icb{position:relative;overflow:hidden}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @keyframes pin{from{transform:translateX(60%);opacity:0}}
 @keyframes pout{to{transform:translateX(60%);opacity:0}}
 .pwrap{max-width:600px;margin:0 auto;padding:6px 16px 120px}
@@ -142,8 +157,10 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 <main id="main"></main>
 <button class="fab" id="fab" onclick="newTx()" aria-label="Add transaction"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav id="nav"></nav>
+<div id="topbar"></div>
 <div id="pages"></div>
 <div class="sheet" id="sheet"></div>
+<script src="myicons.js"></script>
 <script>
 const EMOS="🍔🍜☕🛒🚗⛽🅿️🏠💡📱🎮🎬👕🛍️💊🏥✈️🎁📚🐶💇🏋️🧾💰💵💳🏦📈🧧🎉".match(/\p{Extended_Pictographic}️?/gu);
 const IC={home:'M3 11 12 4l9 7M5 10v10h14V10M10 20v-6h4v6',bolt:'M13 2 4 14h7l-1 8 9-12h-7z',drop:'M12 3C8 8 6 11 6 14a6 6 0 0 0 12 0c0-3-2-6-6-11zM9.5 15a2.5 2.5 0 0 0 2.5 2.5',wifi:'M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',phone:'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',cart:'M3 4h2l2.5 11h11L21 7H6.5M9 19a1 1 0 1 0 0 2 1 1 0 1 0 0-2M18 19a1 1 0 1 0 0 2 1 1 0 1 0 0-2',bowl:'M3 11h18a9 9 0 0 1-18 0zM8 7.5c0-1.5 1-1.5 1-3M12 7.5c0-1.5 1-1.5 1-3M16 7.5c0-1.5 1-1.5 1-3',cup:'M5 8h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5zM17 10h1.5a2 2 0 0 1 0 4H17M9 3v2.5M13 3v2.5',fuel:'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M6 8h6M14 10h2a2 2 0 0 1 2 2v4a1 1 0 0 0 2 0V8l-3-3',train:'M7 3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 11h16M8 21l2-3M16 21l-2-3M8 14.5h.01M16 14.5h.01',parking:'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 17V7h4a3 3 0 0 1 0 6H9',taxi:'M9 4h6v3H9zM3 17v-4l2.5-6h13L21 13v4zM5 17v2.5M19 17v2.5M7.5 13.5h.01M16.5 13.5h.01',wrench:'M15 3a5 5 0 0 0-4.6 6.9L3 17.3 6.7 21l7.4-7.4A5 5 0 0 0 21 9l-3 1.5-2.5-2.5L17 5z',medical:'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 8v8M8 12h8',shield:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4',bottle:'M10 2h4v3h-4zM9 5h6l1 3v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8zM8 12h8',shirt:'M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3a4 4 0 0 1-8 0z',broom:'M15 2l-3 9M7 11h10l2 10H5zM9 15l-.5 6M12 15v6M15 15l.5 6',hammer:'M4 20l9-9M13 4l7 7-3 3-7-7zM10 7l3-3',cap:'M2 9l10-5 10 5-10 5zM6 11v5c3 3 9 3 12 0v-5M22 9v6',baby:'M10 2h4M9 5h6v2l1 2v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V9l1-2zM8 12h3M8 16h3',paw:'M8 6.5a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 1 0 0-3.6M16 6.5a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 1 0 0-3.6M12 3.5a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 1 0 0-3.6M5 11a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 1 0 0-3.2M19 11a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 1 0 0-3.2M12 12c-3 0-5 4-5 6a2 2 0 0 0 3 1.5c1-.5 3-.5 4 0A2 2 0 0 0 17 18c0-2-2-6-5-6z',ticket:'M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4zM14 7v2M14 11v2M14 15v2',tv:'M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM8 3l4 4 4-4M10 11v5l4-2.5z',card:'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M7 15h4',savings:'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M14.5 9a2.5 2 0 0 0-2.5-1.5c-1.5 0-2.5.7-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2a2.5 2 0 0 1-2.5-1.5M12 6v1.5M12 16.5V18',gift:'M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-2-4-6-3-4 0M12 7c2-4 6-3 4 0',plane:'M10 3.5a1.5 1.5 0 0 1 3 0V9l8 5v2l-8-2.5V18l2 1.5V21l-3.5-1L8 21v-1.5l2-1.5v-4.5L2 16v-2l8-5z',receipt:'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',washer:'M5 3h14v18H5zM5 7h14M8 5h.01M11 5h.01M12 10a4 4 0 1 0 0 8 4 4 0 1 0 0-8',cash:'M2 7h20v10H2zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5M5 10v4M19 10v4',trophy:'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M10 17h4v4h-4z',laptop:'M5 5h14v10H5zM2 19h20l-2-4H4z',shop:'M4 10v10h16V10M3 6l1-3h16l1 3v1a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM10 20v-5h4v5',trend:'M3 17l6-6 4 4 8-8M15 7h6v6',key:'M8 11a4 4 0 1 0 0 8 4 4 0 1 0 0-8M10.8 12.2 20 3M17 6l2 2M15 8l2 2',percent:'M19 5 5 19M7 5a2 2 0 1 0 0 4 2 2 0 1 0 0-4M17 15a2 2 0 1 0 0 4 2 2 0 1 0 0-4',envelope:'M5 3h14v18H5zM5 3l7 6 7-6M12 12a2 2 0 1 0 0 4 2 2 0 1 0 0-4',refund:'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',wallet:'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13.5h2',columns:'M3 10h18L12 4zM5 10v8M9 10v8M15 10v8M19 10v8M3 20h18',sparkle:'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z',bag:'M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2',car:'M3 17v-4l2.5-6h13L21 13v4zM5 17v2.5M19 17v2.5M7.5 13.5h.01M16.5 13.5h.01',bulb:'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.4.3.5.7.5 1.1v1h5v-1c0-.4.1-.8.5-1.1A6 6 0 0 0 12 3z',heart:'M12 20s-8-5-8-11a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 6-8 11-8 11z',music:'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0M20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0',game:'M6 8h12a4 4 0 0 1 4 4v1a4 4 0 0 1-7 2.6L14 15h-4l-1 .6A4 4 0 0 1 2 13v-1a4 4 0 0 1 4-4zM7 10.5v3M5.5 12h3M16 11h.01M18 13h.01',book:'M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z',pill:'M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7zM7 7l7 7',dumbbell:'M6 7v10M3 9v6M18 7v10M21 9v6M6 12h12'};
@@ -246,26 +263,67 @@ function ask({title='',msg='',ok='OK',cancel='Cancel',danger=false,input=null,ph
 let sheetClose=null;
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
 
+// ---------- motion (Material-style: fade-through tabs, container-transform screens, ripples, count-up numbers)
+const EASE='cubic-bezier(0.2,0,0,1)',RMO=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lastTap=null;
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('button,.tx,.acard,.d,.tile');
+ lastTap=t?{rect:t.getBoundingClientRect(),time:Date.now()}:null;
+ if(!t||RMO||t.closest('nav'))return;const r=t.getBoundingClientRect(),sz=Math.max(r.width,r.height)*2.2,sp=document.createElement('span');sp.className='rip';
+ sp.style.cssText=`width:${sz}px;height:${sz}px;left:${e.clientX-r.left-sz/2}px;top:${e.clientY-r.top-sz/2}px`;t.appendChild(sp);
+ sp.animate([{transform:'scale(0)',opacity:.22},{transform:'scale(1)',opacity:0}],{duration:600,easing:EASE}).onfinish=()=>sp.remove()},true);
+function countUp(root){if(RMO)return;[...root.querySelectorAll('.amt,.worth b,.damt div')].slice(0,40).forEach(el=>{
+ const m=el.textContent.match(/^(.*?RM)([\d,]+\.\d{2})(.*)$/s);if(!m)return;const v=parseFloat(m[2].replace(/,/g,''));if(!v)return;
+ const t0=performance.now(),D=650,fmt=x=>x.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const step=n=>{const k=Math.min(1,(n-t0)/D),e=1-Math.pow(1-k,3);el.textContent=m[1]+fmt(v*e)+m[3];if(k<1&&el.isConnected)requestAnimationFrame(step)};requestAnimationFrame(step)})}
+function pageIn(e){const el=e.el;if(RMO)return;const r=lastTap&&Date.now()-lastTap.time<900?lastTap.rect:null;e.src=r;
+ const sc=document.createElement('div');sc.className='scrim';$('pages').insertBefore(sc,el);e.scrim=sc;sc.animate([{opacity:0},{opacity:.32}],{duration:400,easing:EASE,fill:'forwards'});
+ if(r&&r.width>30){const W=innerWidth,H=innerHeight,rad=getComputedStyle(document.documentElement).getPropertyValue('--r')||'18px';
+  el.animate([{clipPath:`inset(${r.top}px ${W-r.right}px ${H-r.bottom}px ${r.left}px round 18px)`},{clipPath:'inset(0px 0px 0px 0px round 0px)'}],{duration:450,easing:EASE});
+  el.firstElementChild.animate([{opacity:0,transform:'scale(.92)'},{opacity:0,offset:.15},{opacity:1,transform:'none'}],{duration:450,easing:EASE})}
+ else el.animate([{opacity:0,transform:'translateX(18%)'},{opacity:1,transform:'none'}],{duration:380,easing:EASE})}
+function pageOut(e,done){const el=e.el;if(RMO){el.remove();e.scrim&&e.scrim.remove();return done&&done()}
+ e.scrim&&e.scrim.animate([{opacity:.32},{opacity:0}],{duration:300,easing:EASE,fill:'forwards'});
+ const r=e.src;let a;
+ if(r&&r.width>30&&r.bottom>0&&r.top<innerHeight){const W=innerWidth,H=innerHeight;
+  el.firstElementChild.animate([{opacity:1},{opacity:0,offset:.5},{opacity:0}],{duration:340,easing:EASE,fill:'forwards'});
+  a=el.animate([{clipPath:'inset(0px 0px 0px 0px round 0px)'},{clipPath:`inset(${r.top}px ${W-r.right}px ${H-r.bottom}px ${r.left}px round 18px)`,opacity:.4}],{duration:340,easing:EASE,fill:'forwards'})}
+ else a=el.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateX(18%)'}],{duration:260,easing:EASE,fill:'forwards'});
+ a.onfinish=()=>{el.remove();e.scrim&&e.scrim.remove();done&&done()}}
+function stickyHead(el){const h=el.querySelector('.phead'),t=el.querySelector('.ptitle');if(!h)return;
+ if(t&&!h.querySelector('.htitle')){const s=document.createElement('div');s.className='htitle';s.textContent=t.textContent;h.appendChild(s)}
+ const on=()=>{h.classList.toggle('stuck',el.scrollTop>(t?t.offsetTop+t.offsetHeight-60:8))};el.onscroll=on;on()}
+const TITLES={tx:'Transactions',cal:'Calendar',more:'More',home:''};
+addEventListener('scroll',()=>{const t=document.querySelector('#main .ptitle,#main .hello'),tb=$('topbar');if(!t)return;
+ const past=scrollY>t.offsetTop+t.offsetHeight-50;tb.textContent=TITLES[tab]||S.name||'Money Tracker';tb.classList.toggle('on',past)},{passive:true});
 // ---------- navigation
 let tab='home';const stack=[];const AFTER={};
-function go(t){if(t===tab){window.scrollTo({top:0,behavior:'smooth'});return}tab=t;selDay=null;renderMain(true);window.scrollTo(0,0)}
-function push(name,data={}){const el=document.createElement('div');el.className='page';$('pages').appendChild(el);const e={name,data,el};stack.push(e);paint(e)}
-function paint(e){const st=e.el.scrollTop;e.el.innerHTML=`<div class="pwrap">${PAGES[e.name](e.data)}</div>`;e.el.scrollTop=st;AFTER[e.name]&&AFTER[e.name](e.data,e.el)}
+let tabBusy=false;
+function go(t){if(t===tab){window.scrollTo({top:0,behavior:'smooth'});return}tab=t;selDay=null;navUpdate();
+ const m=$('main');if(RMO){renderMain();scrollTo(0,0);return}
+ m.getAnimations().forEach(a=>a.cancel());
+ m.animate([{opacity:1},{opacity:0}],{duration:90,easing:'linear',fill:'forwards'}).onfinish=()=>{scrollTo(0,0);$('topbar').classList.remove('on');renderMain();m.getAnimations().forEach(a=>a.cancel());
+  m.animate([{opacity:0,transform:'scale(.965)'},{opacity:1,transform:'none'}],{duration:300,easing:EASE});countUp(m)}}
+function push(name,data={}){const el=document.createElement('div');el.className='page';$('pages').appendChild(el);const e={name,data,el};stack.push(e);paint(e);pageIn(e);if(name==='accs'||name==='details')countUp(el)}
+function paint(e){const st=e.el.scrollTop;e.el.innerHTML=`<div class="pwrap">${PAGES[e.name](e.data)}</div>`;e.el.scrollTop=st;stickyHead(e.el);AFTER[e.name]&&AFTER[e.name](e.data,e.el)}
 function refreshTop(){const e=stack.at(-1);if(e)paint(e)}
-function pop(){const e=stack.pop();if(!e)return;e.el.classList.add('leave');setTimeout(()=>e.el.remove(),210);refreshTop();renderMain()}
-function closeAll(){while(stack.length>1)stack.shift().el.remove();pop()}
+function pop(){const e=stack.pop();if(!e)return;pageOut(e);refreshTop();renderMain()}
+function closeAll(){while(stack.length>1){const e=stack.shift();e.el.remove();e.scrim&&e.scrim.remove()}pop()}
 window.mtBack=function(){if(sheetClose){sheetClose();return true}if(stack.length){pop();return true}if(tab!=='home'){go('home');return true}return false};
 function head(right=''){return `<div class="phead"><button class="back" onclick="pop()" aria-label="Back">${nv('back')}</button><span class="sp"></span>${right}</div>`}
 function render(){renderMain()} // used by charts
 function renderAll(){renderMain();refreshTop()}
 
 // ---------- main tabs
+let mtScroll=null;
+function navUpdate(){const n=$('nav');if(!n.children.length)n.innerHTML=[['home','home','Home'],['tx','list','Transactions'],['cal','cal','Calendar'],['more','more','More']].map(([k,i,l])=>`<button data-t="${k}" onclick="go('${k}')"><span class="pi">${nv(i)}</span>${l}</button>`).join('');
+ [...n.children].forEach(b=>b.classList.toggle('on',b.dataset.t===tab));$('fab').classList.toggle('hide',tab==='more')}
 function renderMain(animate){
- $('main').innerHTML=`<div class="${animate?'fade anim':''}">${({home:tHome,tx:tTx,cal:tCal,more:tMore})[tab]()}</div>`;
- $('nav').innerHTML=[['home','home','Home'],['tx','list','Transactions'],['cal','cal','Calendar'],['more','more','More']].map(([k,i,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')"><span class="pi">${nv(i)}</span>${l}</button>`).join('');
- $('fab').style.display=tab==='more'?'none':'grid';
- requestAnimationFrame(()=>{const o=document.querySelector('.mtabs .on');if(o){const p=o.parentElement;p.scrollLeft=o.offsetLeft-p.clientWidth/2+o.clientWidth/2}});
- if(animate)document.querySelectorAll('#main .anim .tx,#main .anim .acard').forEach((r,i)=>r.style.animationDelay=Math.min(i*28,350)+'ms')}
+ const prevMT=document.querySelector('#main .mtabs');const keep=prevMT?prevMT.scrollLeft:null;
+ $('main').innerHTML=`<div>${({home:tHome,tx:tTx,cal:tCal,more:tMore})[tab]()}</div>`;navUpdate();
+ const mt=document.querySelector('#main .mtabs');
+ if(mt){const o=mt.querySelector('.on'),target=o?o.offsetLeft-mt.clientWidth/2+o.clientWidth/2:0;if(keep!=null&&!RMO){mt.scrollLeft=keep;mt.scrollTo({left:target,behavior:'smooth'})}else mt.scrollLeft=target}
+ if(animate==='slide'||typeof animate==='number'){const dir=typeof animate==='number'?animate:1;const sl=document.querySelector('#main .mslide');if(sl&&!RMO){sl.animate([{opacity:0,transform:`translateX(${dir*48}px)`},{opacity:1,transform:'none'}],{duration:320,easing:EASE});countUp(sl)}}
+ else if(animate&&!RMO){const m=$('main').firstElementChild;m.animate([{opacity:0},{opacity:1}],{duration:220,easing:EASE})}}
 function txRow(t){const c=cat(t.cat);return `<div class="tx" onclick="openTx('${t.id}')">${badge(c,46)}
  <div class="sp"><div class="t1">${esc(t.note||c.name)}</div><span class="tag">${esc(t.acc)}</span>${t.rec?' <span class="tag">🔁 auto</span>':''}${t.date>today()?' <span class="tag">upcoming</span>':''}</div>
  <div class="amt ${sg(val(t))}">${t.kind==='inc'?'+':'−'}${rm(t.amt)}</div></div>`}
@@ -286,8 +344,8 @@ function monthTabs(){const now=new Date(),base=new Date(now.getFullYear(),now.ge
  if(!items.some(d=>iso(d)===iso(mon)))items.push(new Date(mon));
  items.sort((a,b)=>a-b).forEach(d=>{const k=iso(d);h+=`<button class="${k===iso(mon)?'on':''}" onclick="setMon('${k}')">${d.toLocaleString('en',{month:'long'})}${d.getFullYear()!==now.getFullYear()?' '+d.getFullYear():''}</button>`});
  return `<div class="mtabs">${h}</div>`}
-function setMon(k){mon=new Date(k+'T00:00');selDay=null;renderMain(true)}
-function shift(n){mon=new Date(mon.getFullYear(),mon.getMonth()+n,1);selDay=null;renderMain(true)}
+function setMon(k){const d=k>iso(mon)?1:-1;if(k===iso(mon))return;mon=new Date(k+'T00:00');selDay=null;renderMain(d)}
+function shift(n){mon=new Date(mon.getFullYear(),mon.getMonth()+n,1);selDay=null;renderMain(n>0?1:-1)}
 function summary(list){let e=0,i=0;list.forEach(t=>t.kind==='inc'?i+=t.amt:e+=t.amt);
  return `<div class="pill"><span class="neg">▾ ${rm(e)}</span><span class="pos">▴ ${rm(i)}</span><span class="sp"></span><b>= ${srm(i-e)}</b></div>`}
 let grp='date';
@@ -298,9 +356,9 @@ function tTx(){
  if(grp==='date')gs=groups(list,t=>t.date,k=>esc(fullDay(k)));
  else if(grp==='cat')gs=groups(list,t=>t.cat,k=>{const c=cat(k);return `<span style="display:inline-flex;vertical-align:middle">${ico(c.icon,c.col,16)}</span> ${esc(c.name)}`}).sort((a,b)=>a.tot-b.tot);
  else gs=groups(list,t=>t.acc,k=>esc(k)).sort((a,b)=>a.tot-b.tot);
- return `<h1 class="ptitle">Transactions</h1>${monthTabs()}${summary(list)}
+ return `<h1 class="ptitle">Transactions</h1>${monthTabs()}<div class="mslide">${summary(list)}
  <div class="seg"><button class="${grp==='date'?'on':''}" onclick="grp='date';renderMain(true)">By day</button><button class="${grp==='cat'?'on':''}" onclick="grp='cat';renderMain(true)">By category</button><button class="${grp==='acc'?'on':''}" onclick="grp='acc';renderMain(true)">By account</button></div>
- ${gs.length?gs.map(g=>`<div class="gh"><span>${g.label}${grp!=='date'?` · ${g.ts.length}`:''}</span><span class="${sg(g.tot)}">${srm(g.tot)}</span></div>${g.ts.map(txRow).join('')}`).join(''):'<div class="empty">No transactions this month.<br>Tap + to add one.</div>'}`}
+ ${gs.length?gs.map(g=>`<div class="gh"><span>${g.label}${grp!=='date'?` · ${g.ts.length}`:''}</span><span class="${sg(g.tot)}">${srm(g.tot)}</span></div>${g.ts.map(txRow).join('')}`).join(''):'<div class="empty">No transactions this month.<br>Tap + to add one.</div>'}</div>`}
 let selDay=null;
 function tCal(){
  const list=monthTx(),days=new Date(mon.getFullYear(),mon.getMonth()+1,0).getDate(),td=today();
@@ -309,8 +367,8 @@ function tCal(){
  for(let d=1;d<=days;d++){const k=ym()+'-'+String(d).padStart(2,'0'),v=net[k];
   cells+=`<div class="d ${k===td?'today':''} ${k===selDay?'sel':''}" onclick="selDay='${k}';renderMain()"><div class="n">${d}</div><div class="v ${v==null?'mute':sg(v)}">${v==null?'–':(v<0?'-':'+')+(Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(1)+'k':Math.round(Math.abs(v)))}</div></div>`}
  const dl=selDay?list.filter(t=>t.date===selDay):[];
- return `<h1 class="ptitle">Calendar</h1><div class="card worth" style="margin-bottom:10px">${worthCells(worth())}</div>${remBanner()}${monthTabs()}${summary(list)}<div class="cal">${cells}</div>
- ${selDay?`<div class="gh"><span>${esc(fullDay(selDay))}</span><button class="btn sm" onclick="newTx('${selDay}')">+ Add</button></div>${dl.map(txRow).join('')||'<div class="empty">Nothing on this day</div>'}`:'<p class="mute" style="text-align:center">Tap a day to see its transactions</p>'}${charts()}`}
+ return `<h1 class="ptitle">Calendar</h1><div class="card worth" style="margin-bottom:10px">${worthCells(worth())}</div>${remBanner()}${monthTabs()}<div class="mslide">${summary(list)}<div class="cal">${cells}</div>
+ ${selDay?`<div class="gh"><span>${esc(fullDay(selDay))}</span><button class="btn sm" onclick="newTx('${selDay}')">+ Add</button></div>${dl.map(txRow).join('')||'<div class="empty">Nothing on this day</div>'}`:'<p class="mute" style="text-align:center">Tap a day to see its transactions</p>'}${charts()}</div>`}
 function tMore(){const T=(ic,t,s,fn)=>`<button class="mtile" onclick="${fn}">${nv(ic,24)}<b>${t}</b><span>${s}</span></button>`;
  return `<h1 class="ptitle">More</h1><div class="mgrid">
  ${T('star','Categories','Add, rename, delete, change icons',"push('cats')")}
@@ -461,11 +519,16 @@ PAGES.catEdit=()=>{const pre=ALLPRE.find(p=>p.name.toLowerCase()===CE.name.trim(
  <label>Icon</label>
  <button class="btn wide" onclick="$('ceFile').click()" style="display:flex;justify-content:center;gap:8px;align-items:center">${nv('camera')} Use your own picture (crop)</button>
  <input type="file" id="ceFile" accept="image/*" hidden onchange="cropFile(this)">
+ ${window.MY_ICONS?`<div class="mute small" style="margin:14px 2px 8px">My app icons</div><input class="field" id="ceMyQ" placeholder="Search app icons, e.g. Maybank" oninput="ceMy()" style="margin:0 0 8px;padding:11px 14px"><div class="icgrid" id="ceMy" style="max-height:230px;overflow:auto"></div>`:''}
  <div class="mute small" style="margin:14px 2px 8px">Drawn icons</div><div class="icgrid" id="ceIcons"></div>
  <div class="mute small" style="margin:14px 2px 8px">Or an emoji – type, paste or pick</div>
  <div class="row"><input class="field" id="ceEmo" style="width:70px;margin:0;text-align:center;font-size:22px" maxlength="8" placeholder="😀" value="${CE.icon.startsWith('svg:')||CE.icon.startsWith('img:')?'':esc(CE.icon)}" oninput="if(this.value.trim())setCeIcon(this.value.trim())"><div class="chips sp" id="ceEmos"></div></div>
  <div class="pfoot"><div><button class="btn pri wide" onclick="saveCat()">Save</button></div></div>`};
-AFTER.catEdit=()=>ceIcons();
+AFTER.catEdit=()=>{ceIcons();ceMy()};
+function ceMy(){const box=$('ceMy');if(!box||!window.MY_ICONS)return;const q=($('ceMyQ').value||'').trim().toLowerCase(),nm=CE.name.trim().toLowerCase();
+ let L=MY_ICONS.map((x,i)=>({...x,i})).filter(x=>!q||x.n.toLowerCase().includes(q));
+ if(!q&&nm)L.sort((a,b)=>(b.n.toLowerCase().includes(nm)||nm.includes(b.n.toLowerCase()))-(a.n.toLowerCase().includes(nm)||nm.includes(a.n.toLowerCase())));
+ box.innerHTML=L.map(x=>`<button class="icb ${CE.icon==='img:'+x.src?'on':''}" title="${esc(x.n)}" onclick="setCeIcon('img:'+MY_ICONS[${x.i}].src);ceMy()" style="overflow:hidden;padding:4px"><img src="${x.src}" alt="${esc(x.n)}" style="width:100%;height:100%;border-radius:10px"></button>`).join('')||'<span class="mute small">No match</span>'}
 function ceIcons(){const pre=ALLPRE.find(p=>p.name.toLowerCase()===CE.name.trim().toLowerCase());const keys=Object.keys(IC);
  if(pre){const k=pre.svg.slice(4);keys.splice(keys.indexOf(k),1);keys.unshift(k)}
  $('ceIcons').innerHTML=keys.map(k=>`<button class="icb ${CE.icon==='svg:'+k?'on':''}" onclick="setCeIcon('svg:${k}')">${ico('svg:'+k,CE.col,24)}</button>`).join('');
@@ -483,15 +546,22 @@ async function delCat(){const n=S.tx.filter(t=>t.cat===CE.id).length;
 // crop your own picture
 function cropFile(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;const r=new FileReader();r.onload=()=>push('crop',{src:r.result});r.readAsDataURL(f)}
 let CR=null;
-PAGES.crop=d=>head()+`<h1 class="ptitle">Crop icon</h1><p class="mute" style="margin-top:-6px">Drag to move, pinch or use the slider to zoom.</p>
+PAGES.crop=d=>head()+`<h1 class="ptitle">Crop icon</h1>
+ <div id="cropFound" class="mute small" style="margin:-6px 0 8px">Looking for icons in your picture…</div>
+ <div class="chips" id="cropThumbs"></div>
  <div class="cropv" id="cropv"><img id="cropImg" src="${d.src}" alt=""><div class="cropmask"></div></div>
- <input type="range" id="cropZ" min="1" max="5" step="0.01" value="1">
+ <input type="range" id="cropZ" min="1" max="12" step="0.01" value="1">
+ <p class="mute small" style="text-align:center;margin:4px 0 0">Drag to move · pinch or slide to zoom</p>
+ <div id="cropWarn" class="small" style="text-align:center;color:var(--neg);min-height:18px;margin-top:6px"></div>
  <div class="pfoot"><div><button class="btn pri wide" onclick="useCrop()">Use this icon</button></div></div>`;
 AFTER.crop=(d,el)=>{const v=el.querySelector('#cropv'),img=el.querySelector('#cropImg'),z=el.querySelector('#cropZ');
- const apply=()=>{const V=v.clientWidth,s=CR.base*CR.z,w=CR.w*s,h=CR.h*s;CR.x=Math.min(0,Math.max(V-w,CR.x));CR.y=Math.min(0,Math.max(V-h,CR.y));img.style.transform=`translate(${CR.x}px,${CR.y}px) scale(${s})`};
- const init=()=>{const V=v.clientWidth;CR={w:img.naturalWidth,h:img.naturalHeight,z:1,img};CR.base=Math.max(V/CR.w,V/CR.h);CR.x=(V-CR.w*CR.base)/2;CR.y=(V-CR.h*CR.base)/2;apply()};
+ const apply=()=>{const V=v.clientWidth,s=CR.base*CR.z,w=CR.w*s,h=CR.h*s;CR.x=Math.min(0,Math.max(V-w,CR.x));CR.y=Math.min(0,Math.max(V-h,CR.y));img.style.transform=`translate(${CR.x}px,${CR.y}px) scale(${s})`;
+  const src=V/s,wn=el.querySelector('#cropWarn');if(wn)wn.textContent=src<110?'Low resolution here – for a sharper icon, screenshot with the folder open and use the original file.':''};
+ CR={apply};
+ const init=()=>{const V=v.clientWidth;Object.assign(CR,{w:img.naturalWidth,h:img.naturalHeight,z:1,img});CR.base=Math.max(V/CR.w,V/CR.h);CR.x=(V-CR.w*CR.base)/2;CR.y=(V-CR.h*CR.base)/2;apply();
+  setTimeout(()=>{let boxes=[];try{boxes=findIcons(img)}catch(e){}showFound(el,boxes)},30)};
  img.complete&&img.naturalWidth?init():img.onload=init;
- const zoomTo=(nz,cx,cy)=>{const s0=CR.base*CR.z;nz=Math.min(5,Math.max(1,nz));const s1=CR.base*nz;CR.x=cx-(cx-CR.x)*s1/s0;CR.y=cy-(cy-CR.y)*s1/s0;CR.z=nz;z.value=nz;apply()};
+ const zoomTo=(nz,cx,cy)=>{const s0=CR.base*CR.z;nz=Math.min(12,Math.max(1,nz));const s1=CR.base*nz;CR.x=cx-(cx-CR.x)*s1/s0;CR.y=cy-(cy-CR.y)*s1/s0;CR.z=nz;z.value=nz;apply()};
  z.oninput=()=>{const V=v.clientWidth;zoomTo(+z.value,V/2,V/2)};
  const pts=new Map();let last=null,pd=null;
  v.onpointerdown=e=>{v.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});last={x:e.clientX,y:e.clientY};pd=null};
@@ -499,11 +569,53 @@ AFTER.crop=(d,el)=>{const v=el.querySelector('#cropv'),img=el.querySelector('#cr
   if(pts.size===2){const[a,b]=[...pts.values()],dd=Math.hypot(a.x-b.x,a.y-b.y),r=v.getBoundingClientRect();if(pd)zoomTo(CR.z*dd/pd,(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top);pd=dd;return}
   CR.x+=e.clientX-last.x;CR.y+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};apply()};
  v.onpointerup=v.onpointercancel=e=>{pts.delete(e.pointerId);pd=null;const p=[...pts.values()][0];if(p)last=p};
- v.onwheel=e=>{e.preventDefault();const r=v.getBoundingClientRect();zoomTo(CR.z*(e.deltaY<0?1.1:.9),e.clientX-r.left,e.clientY-r.top)}};
-function useCrop(){if(!CR)return;const V=$('cropv').clientWidth,s=CR.base*CR.z,N=160,c=document.createElement('canvas');c.width=c.height=N;
- c.getContext('2d').drawImage(CR.img,-CR.x/s,-CR.y/s,V/s,V/s,0,0,N,N);
- let url=c.toDataURL('image/webp',.85);if(!url.startsWith('data:image/webp'))url=c.toDataURL('image/jpeg',.85);
- CE.icon='img:'+url;pop();toast('Picture set as icon')}
+ v.onwheel=e=>{e.preventDefault();const r=v.getBoundingClientRect();zoomTo(CR.z*(e.deltaY<0?1.1:.9),e.clientX-r.left,e.clientY-r.top)};
+ CR.frame=b=>{const V=v.clientWidth,i=b.s*.05,inner=b.s-2*i,s1=V/inner;CR.z=Math.max(1,s1/CR.base);const s=CR.base*CR.z;CR.x=-(b.x+i)*s+(V-inner*s)/2;CR.y=-(b.y+i)*s+(V-inner*s)/2;z.value=CR.z;apply()}};
+function showFound(el,boxes){const f=el.querySelector('#cropFound'),t=el.querySelector('#cropThumbs');if(!f)return;
+ if(!boxes.length){f.textContent='No icons found automatically – drag and zoom to crop by hand.';return}
+ f.textContent=`Found ${boxes.length} icon${boxes.length>1?'s':''} – tap one to frame it, then tap “Use this icon”.`;
+ CR.boxes=boxes;t.innerHTML=boxes.map((b,i)=>{const c=document.createElement('canvas');c.width=c.height=56;const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(CR.img,b.x,b.y,b.s,b.s,0,0,56,56);
+  return `<button class="chip" style="padding:3px;border-radius:14px" onclick="CR.frame(CR.boxes[${i}]);this.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===this))"><img src="${c.toDataURL()}" width="48" height="48" style="border-radius:11px;display:block" alt=""></button>`}).join('')}
+// Finds app icons in a screenshot: rounded squares with a sharp outline on a softer background.
+function findIcons(img){const W=270,f=img.naturalWidth/W,H=Math.round(img.naturalHeight/f);if(H<50)return[];
+ const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,W,H);
+ const d=x.getImageData(0,0,W,H).data,N=W*H,ch=[new Float32Array(N),new Float32Array(N),new Float32Array(N)];
+ for(let i=0;i<N;i++){ch[0][i]=d[i*4];ch[1][i]=d[i*4+1];ch[2][i]=d[i*4+2]}
+ const blur=a=>{const t=new Float32Array(N),o=new Float32Array(N);for(let y=0;y<H;y++)for(let X=0;X<W;X++){const i=y*W+X;t[i]=(a[y*W+Math.max(0,X-1)]+2*a[i]+a[y*W+Math.min(W-1,X+1)])/4}
+  for(let y=0;y<H;y++)for(let X=0;X<W;X++){const i=y*W+X;o[i]=(t[Math.max(0,y-1)*W+X]+2*t[i]+t[Math.min(H-1,y+1)*W+X])/4}return o};
+ const g=new Float32Array(N);
+ for(const a0 of ch){const a=blur(blur(a0));for(let y=1;y<H-1;y++)for(let X=1;X<W-1;X++){const i=y*W+X,
+  gx=a[i-W+1]+2*a[i+1]+a[i+W+1]-a[i-W-1]-2*a[i-1]-a[i+W-1],gy=a[i+W-1]+2*a[i+W]+a[i+W+1]-a[i-W-1]-2*a[i-W]-a[i-W+1];g[i]+=Math.hypot(gx,gy)}}
+ const out=[];
+ for(const thr of [150,220,320,480,700,110,85]){
+  let m=new Uint8Array(N);for(let i=0;i<N;i++)m[i]=g[i]>thr?1:0;
+  const morph=(m,dil)=>{const o=new Uint8Array(N);for(let y=0;y<H;y++)for(let X=0;X<W;X++){let v=dil?0:1;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=X+dx;const q=(yy<0||yy>=H||xx<0||xx>=W)?0:m[yy*W+xx];if(dil?q:!q){v=dil?1:0}}o[y*W+X]=v}return o};
+  m=morph(morph(m,1),0);
+  // fill holes: flood the outside, everything not reached becomes part of the shape
+  const out_=new Uint8Array(N),st=[];for(let X=0;X<W;X++){st.push(X,(H-1)*W+X)}for(let y=0;y<H;y++){st.push(y*W,y*W+W-1)}
+  while(st.length){const i=st.pop();if(out_[i]||m[i])continue;out_[i]=1;const y=(i/W)|0,X=i%W;if(X>0)st.push(i-1);if(X<W-1)st.push(i+1);if(y>0)st.push(i-W);if(y<H-1)st.push(i+W)}
+  for(let i=0;i<N;i++)m[i]=out_[i]?0:1;
+  const lab=new Int32Array(N);let id=0;
+  for(let s0=0;s0<N;s0++){if(!m[s0]||lab[s0])continue;id++;let x0=W,x1=0,y0=H,y1=0,cnt=0;const q=[s0];lab[s0]=id;
+   while(q.length){const i=q.pop(),y=(i/W)|0,X=i%W;cnt++;if(X<x0)x0=X;if(X>x1)x1=X;if(y<y0)y0=y;if(y>y1)y1=y;
+    for(const j of [X>0?i-1:-1,X<W-1?i+1:-1,y>0?i-W:-1,y<H-1?i+W:-1])if(j>=0&&m[j]&&!lab[j]){lab[j]=id;q.push(j)}}
+   const w=x1-x0+1,h=y1-y0+1;if(!(w>.1*W&&w<.3*W&&w/h>.85&&w/h<1.18)||y0<.05*H||cnt/(w*h)<.7)continue;
+   const s=Math.max(w,h),cx=(x0+x1+1)/2,cy=(y0+y1+1)/2,b={x:Math.round((cx-s/2)*f),y:Math.round((cy-s/2)*f),s:Math.round(s*f)};
+   if(out.some(o=>Math.abs(b.x+b.s/2-o.x-o.s/2)<o.s/2&&Math.abs(b.y+b.s/2-o.y-o.s/2)<o.s/2))continue;out.push(b)}}
+ out.sort((a,b)=>a.y-b.y);const rows=[];out.forEach(b=>{const r=rows.at(-1);if(r&&Math.abs(b.y-r[0].y)<b.s*.4)r.push(b);else rows.push([b])});
+ return rows.flatMap(r=>r.sort((a,b)=>a.x-b.x))}
+// Crops, resizes in high quality and sharpens edges so the icon looks crisp.
+function useCrop(){if(!CR||!CR.img)return;const V=$('cropv').clientWidth,s=CR.base*CR.z,N=192,sx=-CR.x/s,sy=-CR.y/s,sw=V/s;
+ let src=document.createElement('canvas'),cur=Math.round(sw);src.width=src.height=cur;const sc=src.getContext('2d');sc.imageSmoothingQuality='high';sc.drawImage(CR.img,sx,sy,sw,sw,0,0,cur,cur);
+ while(cur>N*2){const h=document.createElement('canvas'),n=Math.round(cur/2);h.width=h.height=n;const hc=h.getContext('2d');hc.imageSmoothingQuality='high';hc.drawImage(src,0,0,n,n);src=h;cur=n}
+ const c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(src,0,0,N,N);
+ const im=x.getImageData(0,0,N,N),p=im.data,o=new Uint8ClampedArray(p),amt=sw<N?0.9:0.6;
+ for(let y=1;y<N-1;y++)for(let X=1;X<N-1;X++)for(let k=0;k<3;k++){const i=(y*N+X)*4+k;
+  const bl=(p[i-N*4-4]+2*p[i-N*4]+p[i-N*4+4]+2*p[i-4]+4*p[i]+2*p[i+4]+p[i+N*4-4]+2*p[i+N*4]+p[i+N*4+4])/16,diff=p[i]-bl;
+  if(Math.abs(diff)>2)o[i]=p[i]+amt*diff}
+ im.data.set(o);x.putImageData(im,0,0);
+ let url=c.toDataURL('image/webp',.9);if(!url.startsWith('data:image/webp'))url=c.toDataURL('image/jpeg',.92);
+ CE.icon='img:'+url;pop();toast(sw<110?'Icon set (source was low resolution)':'Icon set – cropped and sharpened')}
 
 // ---------- repeating list & backup pages
 PAGES.recs=()=>head()+`<h1 class="ptitle">Repeating &amp; reminders</h1>
@@ -568,7 +680,7 @@ function charts(){
  <div class="card"><svg viewBox="0 0 ${W} ${top+H+20}" style="width:100%;display:block"><line x1="0" x2="${W}" y1="${top+H}" y2="${top+H}" stroke="var(--line)"/>${bars}</svg></div>`}
 
 // ---------- start
-runRec(true);S.accs.forEach(ainfo);save();renderMain(true);
+runRec(true);S.accs.forEach(ainfo);save();renderMain(true);countUp($('main'));
 setInterval(()=>{runRec();if(!stack.length&&!sheetClose)renderMain()},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){runRec();renderMain()}});
 </script></body></html>
