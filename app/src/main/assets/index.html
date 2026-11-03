@@ -89,11 +89,13 @@ nav button{transition:color .25s}nav button.on{color:var(--fg);font-weight:600}n
 .anim .tx,.anim .card,.anim .acard{animation:rise .38s cubic-bezier(.2,.8,.2,1) both}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}}
 /* home */
-.acards{display:flex;gap:10px;overflow-x:auto;margin:0 -16px;padding:4px 16px 10px;scrollbar-width:none;scroll-snap-type:x mandatory}
+.acards{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;margin:0 -16px;padding:4px 16px 10px;scrollbar-width:none;scroll-snap-type:x mandatory}
 .acards::-webkit-scrollbar{display:none}
-.acard{flex:0 0 152px;scroll-snap-align:start;background:var(--card);border-radius:18px;padding:14px;border:2px solid transparent;cursor:pointer}
+.acard{flex:0 0 auto;min-width:132px;max-width:190px;scroll-snap-align:start;background:var(--card);border-radius:18px;padding:11px 14px 10px;border:2px solid transparent;cursor:pointer;transition:border-color .25s,background .25s;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.acard>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard.def{background:var(--acc2)}
 .acard.def{border-color:var(--acc)}
-.acard b{display:block;font-size:17px;margin-bottom:2px}
+.acard b{display:block;font-size:16px;margin-bottom:1px}
 .worth{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;gap:4px}
 .worth b{font-size:16px}
 /* picker */
@@ -293,7 +295,7 @@ function go(t){if(t===tab){window.scrollTo({top:0,behavior:'smooth'});return}tab
  m.getAnimations().forEach(a=>a.cancel());
  m.animate([{opacity:1},{opacity:0}],{duration:90,easing:'linear',fill:'forwards'}).onfinish=()=>{scrollTo(0,0);$('topbar').classList.remove('on');renderMain();m.getAnimations().forEach(a=>a.cancel());
   m.animate([{opacity:0},{opacity:1}],{duration:220,easing:EASE});countUp(m)}}
-function push(name,data={}){const el=document.createElement('div');el.className='page';$('pages').appendChild(el);const e={name,data,el};stack.push(e);paint(e);pageIn(e);if(name==='accs'||name==='details')countUp(el)}
+function push(name,data={}){const el=document.createElement('div');el.className='page';$('pages').appendChild(el);const e={name,data,el};stack.push(e);paint(e);pageIn(e);if(name==='accs'||name==='details'||name==='acc')countUp(el)}
 function paint(e){const st=e.el.scrollTop;e.el.innerHTML=`<div class="pwrap">${PAGES[e.name](e.data)}</div>`;e.el.scrollTop=st;stickyHead(e.el);AFTER[e.name]&&AFTER[e.name](e.data,e.el)}
 function refreshTop(){const e=stack.at(-1);if(e)paint(e)}
 function pop(){const e=stack.pop();if(!e)return;pageOut(e);refreshTop();renderMain()}
@@ -323,7 +325,8 @@ function tHome(){
  const w=worth(),recent=[...S.tx].filter(t=>t.date<=today()).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,8);
  const h=new Date().getHours(),greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
  return `<div class="hello"><small>${greet}</small><b>${esc(S.name||'Welcome back')}</b></div>
- <div class="acards">${S.accs.map((a,i)=>{const b=accBal(a),n=S.tx.filter(t=>t.acc===a).length,L=ainfo(a).type==='liab';return `<div class="acard ${a===defAcc()?'def':''}" onclick="editAcc(${i})"><b>${esc(a)}</b><div class="amt ${L||b<0?'neg':'pos'}">${L?'owe ':''}${srm(b)}</div><div class="mute small">${n} transaction${n===1?'':'s'}</div></div>`}).join('')}</div>
+ <div class="acards">${S.accs.map((a,i)=>{const b=accBal(a),n=S.tx.filter(t=>t.acc===a).length,L=ainfo(a).type==='liab';return `<div class="acard ${a===defAcc()?'def':''}" data-i="${i}" onclick="tileTap(${i},this)"><b>${esc(a)}</b><div class="amt ${L||b<0?'neg':'pos'}">${L?'owe ':''}${srm(b)}</div><div class="mute small">${n} transaction${n===1?'':'s'}</div></div>`}).join('')}</div>
+ <div class="mute small" style="margin:-2px 4px 10px">Tap to set default · press and hold to open</div>
  <div class="card worth">${worthCells(w)}</div>
  <div style="margin-top:10px">${remBanner()}</div>
  <div class="gh"><span style="font-size:15px;color:var(--fg);font-weight:600">Recent</span></div>
@@ -472,12 +475,34 @@ const ainfo=a=>S.accInfo[a]||(S.accInfo[a]={type:/card|loan|credit|ptptn|mortgag
 function accBal(a){const i=ainfo(a),td=today();let b=+i.open||0;S.tx.forEach(t=>{if(t.acc!==a||t.date>td)return;const v=val(t);b+=i.type==='liab'?-v:v});return b}
 function worth(){let as=0,li=0;S.accs.forEach(a=>{const b=accBal(a);ainfo(a).type==='liab'?li+=b:as+=b});return{as,li}}
 function worthCells(w){const n=w.as-w.li;return `<div><div class="mute small">Assets</div><b class="${sg(w.as)}">${srm(w.as)}</b></div><div><div class="mute small">Liabilities</div><b class="neg">${srm(w.li)}</b></div><div><div class="mute small">Net worth</div><b>${srm(n)}</b></div>`}
-let AE=null;
+let AE=null,holdT=null,held=false;
+function setDefault(a,quiet){S.defAcc=a;save();document.querySelectorAll('.acard').forEach(c=>c.classList.toggle('def',S.accs[+c.dataset.i]===a));if(!quiet)toast(`${a} is now your default account`)}
+function tileTap(i,el){if(held){held=false;return}const a=S.accs[i];if(a===defAcc())return;setDefault(a);navigator.vibrate&&navigator.vibrate(10)}
+document.addEventListener('pointerdown',e=>{const c=e.target.closest('.acard');if(!c)return;held=false;clearTimeout(holdT);const x=e.clientX,y=e.clientY;
+ holdT=setTimeout(()=>{held=true;navigator.vibrate&&navigator.vibrate(18);openAcc(S.accs[+c.dataset.i])},480);
+ const cancel=ev=>{if(ev.type!=='pointermove'||Math.hypot(ev.clientX-x,ev.clientY-y)>10){clearTimeout(holdT);removeEventListener('pointermove',cancel);removeEventListener('pointerup',cancel);removeEventListener('pointercancel',cancel)}};
+ addEventListener('pointermove',cancel);addEventListener('pointerup',cancel);addEventListener('pointercancel',cancel)});
+document.addEventListener('contextmenu',e=>{if(e.target.closest('.acard'))e.preventDefault()});
+function openAcc(a){push('acc',{a})}
+const starIc=on=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="${NAVI.star}"/></svg>`;
+PAGES.acc=d=>{const a=d.a;if(!S.accs.includes(a))return head()+'<div class="empty">This account no longer exists.</div>';
+ const i=S.accs.indexOf(a),inf=ainfo(a),L=inf.type==='liab',b=accBal(a),isDef=a===defAcc(),td=today();
+ const list=S.tx.filter(t=>t.acc===a).sort((x,y)=>y.date.localeCompare(x.date)||y.id.localeCompare(x.id));
+ const mk=ym();let inM=0,outM=0;list.forEach(t=>{if(t.date.startsWith(mk)&&t.date<=td)t.kind==='inc'?inM+=t.amt:outM+=t.amt});
+ const shown=list.slice(0,d.more?list.length:150);const gs=groups(shown,t=>t.date.slice(0,7),k=>new Date(k+'-01T00:00').toLocaleString('en',{month:'long',year:'numeric'}));
+ return head(`<button class="back" onclick="toggleDef('${i}')" aria-label="${isDef?'Default account':'Set as default'}" style="color:${isDef?'#f5b82e':'var(--mute)'}">${starIc(isDef)}</button><button class="back" onclick="editAcc(${i})" aria-label="Edit account">${nv('edit')}</button><button class="back" onclick="AE={orig:S.accs[${i}]};delAcc()" aria-label="Delete account" style="color:var(--neg)">${nv('trash')}</button>`)+
+ `<h1 class="ptitle">${esc(a)}</h1>
+ <div class="row" style="margin:-8px 2px 12px;gap:6px"><span class="tag">${L?'Liability':'Asset'}</span>${isDef?'<span class="tag" style="color:#c48a00">★ Default</span>':''}</div>
+ <div class="card" style="margin-bottom:10px"><div class="mute small">${L?'You owe':'Balance'}</div><div class="amt ${L||b<0?'neg':'pos'}" style="font-size:30px;letter-spacing:-.5px">${srm(b)}</div>
+ <div class="row small" style="margin-top:6px;gap:14px"><span class="mute">This month</span><span class="pos">▴ ${rm(inM)}</span><span class="neg">▾ ${rm(outM)}</span></div></div>
+ ${gs.length?gs.map(g=>`<div class="gh"><span>${esc(g.label)} · ${g.ts.length}</span><span class="${sg(g.tot)}">${srm(g.tot)}</span></div>${g.ts.map(txRow).join('')}`).join(''):'<div class="empty">No transactions in this account yet.</div>'}
+ ${list.length>shown.length?`<button class="btn wide" style="margin-top:10px" onclick="stack.at(-1).data.more=1;refreshTop()">Show all ${list.length} transactions</button>`:''}`};
+function toggleDef(i){const a=S.accs[+i];if(a===defAcc()){toast(`${a} is already your default account`);return}setDefault(a);refreshTop()}
 function editAcc(i){const a=i==null?null:S.accs[i],inf=a?ainfo(a):{type:'asset',open:0};AE={orig:a,name:a||'',type:inf.type,open:inf.open||0};push('accEdit')}
 PAGES.accs=()=>head(`<button class="btn sm" onclick="editAcc()">+ New</button>`)+`<h1 class="ptitle">Accounts</h1><div class="card worth" style="margin-bottom:10px">${worthCells(worth())}</div>
- ${S.accs.map((a,i)=>{const d=a===defAcc(),b=accBal(a),L=ainfo(a).type==='liab';return `<div class="tx" onclick="editAcc(${i})"><div class="sp"><div class="t1">${esc(a)} ${d?'<span class="tag">Default</span>':''}</div><span class="mute small">${L?'Liability · you owe':'Asset · balance'}</span></div><div class="amt ${L||b<0?'neg':'pos'}">${srm(b)}</div>
+ ${S.accs.map((a,i)=>{const d=a===defAcc(),b=accBal(a),L=ainfo(a).type==='liab';return `<div class="tx" onclick="openAcc(S.accs[${i}])"><div class="sp"><div class="t1">${esc(a)} ${d?'<span class="tag">Default</span>':''}</div><span class="mute small">${L?'Liability · you owe':'Asset · balance'}</span></div><div class="amt ${L||b<0?'neg':'pos'}">${srm(b)}</div>
  <button class="back" onclick="event.stopPropagation();S.defAcc=S.accs[${i}];save();refreshTop();toast('Default account set')" aria-label="Set default" style="color:${d?'var(--acc)':'var(--mute)'}">${nv('star')}</button></div>`}).join('')}
- <p class="mute small">Tap ☆ to set the default account for new transactions. Tap an account to edit its type and starting balance.</p>`;
+ <p class="mute small">Tap ☆ to set the default account for new transactions. Tap an account to see its transactions, or to edit or delete it.</p>`;
 PAGES.accEdit=()=>head(AE.orig?`<button class="back" onclick="delAcc()" aria-label="Delete">${nv('trash')}</button>`:'')+`<h1 class="ptitle">${AE.orig?'Edit account':'New account'}</h1>
  <label>Name</label><input class="field" value="${esc(AE.name)}" oninput="AE.name=this.value" style="margin:0">
  <label>Type</label><div class="seg big"><button class="${AE.type==='asset'?'on':''}" onclick="AE.type='asset';refreshTop()">Asset</button><button class="${AE.type==='liab'?'on':''}" onclick="AE.type='liab';refreshTop()">Liability</button></div>
@@ -487,10 +512,10 @@ PAGES.accEdit=()=>head(AE.orig?`<button class="back" onclick="delAcc()" aria-lab
 async function saveAcc(){const n=AE.name.trim();if(!n)return toast('Enter a name');if(n!==AE.orig&&S.accs.includes(n))return toast('That name is already used');
  const inf={type:AE.type,open:AE.open},o=AE.orig;
  if(o){S.accs[S.accs.indexOf(o)]=n;if(n!==o){S.tx.forEach(t=>{if(t.acc===o)t.acc=n});S.rec.forEach(r=>{if(r.acc===o)r.acc=n});if(S.defAcc===o)S.defAcc=n;delete S.accInfo[o]}}else S.accs.push(n);
- S.accInfo[n]=inf;save();pop();toast('Account saved')}
+ S.accInfo[n]=inf;save();const below=stack.at(-2);if(below&&below.name==='acc'&&o)below.data.a=n;pop();toast('Account saved')}
 async function delAcc(){if(S.accs.length<2)return toast('Keep at least one account');
  if(!await ask({title:`Delete "${AE.orig}"?`,msg:'Its transactions stay, still labelled with this name.',ok:'Delete',danger:true}))return;
- S.accs=S.accs.filter(a=>a!==AE.orig);delete S.accInfo[AE.orig];save();pop()}
+ S.accs=S.accs.filter(a=>a!==AE.orig);delete S.accInfo[AE.orig];save();if(stack.at(-1)&&stack.at(-1).name==='accEdit')pop();if(stack.at(-1)&&stack.at(-1).name==='acc')pop();toast('Account deleted')}
 
 // ---------- categories
 let CK='exp',CE=null;
